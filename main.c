@@ -168,7 +168,6 @@ void drawTile(BITMAP*buffer, BITMAP *image, int x, int y)
 {
     x_screen = x_start + (x - y) * TILE_WIDTH/2;
     y_screen = y_start + (x + y) * TILE_HEIGHT/4;
-
     draw_sprite(buffer,image,x_screen,y_screen);
 }
 
@@ -211,21 +210,13 @@ void multiplyVector(Vector2D xTransfo,Vector2D yTransfo,int *x,int *y)
     *y=xTransfo.y*(*x)+yTransfo.y*(*y);
 }
 
-void update_mouse_position(int *mouseX,int *mouseY) {
-    if (mouse_x >= 0 && mouse_y >= 0) {
-        int isoX = mouse_x / (TILE_WIDTH )-(x_start/TILE_WIDTH );
-        int isoY = mouse_y / (TILE_HEIGHT) -y_start/TILE_HEIGHT;
-        *mouseX = isoX;
-        *mouseY = isoY;
-    }
-}
-
 
 int main() {
     init();
     BITMAP *tabImages[115];
     BITMAP *buffer= create_bitmap(SCREEN_W,SCREEN_H);
     BITMAP *selection=create_bitmap(SCREEN_W,SCREEN_H);
+    BITMAP *selectionImage= importeImage("../images/imageSelection.bmp");
 
     Vector2D iTransfo,jTransfo;
     Vector2DF iInvert,jInvert;
@@ -266,7 +257,7 @@ int main() {
 
     BITMAP *imageSelection=importeImage("../images/CheatingImage.bmp");
     x_start = SCREEN_W/2 - TILE_WIDTH/2;
-    y_start = 0;
+    y_start = 200;
     show_mouse(screen);
 
 
@@ -279,10 +270,10 @@ int main() {
         mapY=mouse_y/(TILE_HEIGHT/2);
         OffsetX=mouse_x%TILE_WIDTH;
         OffsetY=mouse_y%(TILE_HEIGHT/2);
-        SelectedX=(mapY-y_start/TILE_HEIGHT)+(mapX-x_start/TILE_WIDTH);
-        SelectedY=(mapY-y_start/TILE_HEIGHT)-(mapX-x_start/TILE_WIDTH);
+        SelectedX=(mapY-y_start/(TILE_HEIGHT/2))+(mapX-x_start/TILE_WIDTH);
+        SelectedY=(mapY-y_start/(TILE_HEIGHT/2))-(mapX-x_start/TILE_WIDTH);
 
-        printf("%d %d %d %d\n", SelectedX,SelectedY,OffsetX,OffsetY);
+       /* printf("%d %d %d %d\n", SelectedX,SelectedY,OffsetX,OffsetY);*/
         draw_sprite(selection,imageSelection,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2);
         if(getpixel(selection,mouse_x,mouse_y)== makecol(0,255,0)){SelectedX++;}
         else if(getpixel(selection,mouse_x,mouse_y)== makecol(255,255,0)){SelectedY++;}
@@ -291,7 +282,8 @@ int main() {
         if(mouse_b&&SelectedX*GRID_SIZE+SelectedY>=0&&SelectedX*GRID_SIZE+SelectedY<=9999){mapF[SelectedX*GRID_SIZE+SelectedY]++;
             if(mapF[SelectedX*GRID_SIZE+SelectedY]>114){mapF[SelectedX*GRID_SIZE+SelectedY]=-1;}}
         drawMap(buffer,tabImages);
-        /*rect(buffer,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2,(mapX+1)*TILE_WIDTH,(mapY+1)*TILE_HEIGHT/2, makecol(255,0,0));*/
+        drawTile(buffer,selectionImage,SelectedX,SelectedY);
+       /* rect(buffer,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2,(mapX+1)*TILE_WIDTH,(mapY+1)*TILE_HEIGHT/2, makecol(255,0,0));*/
         button();
 
         blit(buffer,screen,0,0,0,0,SCREEN_W,SCREEN_H);
@@ -319,7 +311,6 @@ END_OF_MAIN();
         SelectedY=(mapY-y_start/TILE_HEIGHT)-(mapX-x_start/TILE_WIDTH);*//*
 
         printf("%d %d\n",SelectedX,SelectedY);
-
         for (int i = 0; i < GRID_SIZE; i++) {
             for (int j = 0; j < GRID_SIZE; j++) {
                 if(mapF[i*GRID_SIZE+j]>-1)

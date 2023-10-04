@@ -347,19 +347,19 @@ int main() {
     clock_t tempsPourClick;
 
     // Number of tiles in world
-    Vector2D vWorldSize = { 100, 100 };
+    Vector2D vWorldSize = { 10, 10 };
 
     // Size of single tile graphic
-    Vector2D vTileSize = { 32, 16 };
+    Vector2D vTileSize = { 94, 54 };
 
     // Where to place tile (0,0) on screen (in tile size steps)
     Vector2D vOrigin = { 5, 1 };
 
     char NomDeFichier[500];
 
-    for(int i=0;i<114;i++)
+    for(int i=1;i<16;i++)
     {
-        sprintf(NomDeFichier,"../images/%d.bmp",i);
+        sprintf(NomDeFichier,"../roads/road%d.bmp",i);
         printf("%s\n",NomDeFichier);
         tabImages[i]= importeImage(NomDeFichier);
     }
@@ -368,7 +368,11 @@ int main() {
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++) {
 
-            mapF[i*GRID_SIZE+j]=rand()%20   ;
+            mapF[i*GRID_SIZE+j]=rand()%15;
+            if(mapF[i*GRID_SIZE+j]==0)
+            {
+                mapF[i*GRID_SIZE+j]++;
+            }
 
         }
     }
@@ -386,6 +390,12 @@ int main() {
     {
         sprintf(NomDeFichier,"../images/tower%d.bmp",i);
         tower[i]= importeImage(NomDeFichier);
+    }
+    BITMAP *house[4];
+    for(int i=0;i<4;i++)
+    {
+        sprintf(NomDeFichier,"../house/white_green_house%d.bmp",i);
+        house[i]= importeImage(NomDeFichier);
     }
     x_start = SCREEN_W/2 - TILE_WIDTH/2;
     y_start = 200;
@@ -408,6 +418,8 @@ int main() {
 
         // Work out mouse offset into cell
         Vector2D vOffset = { mouse_x % vTileSize.x, mouse_y % vTileSize.y };
+
+        Vector2D vBatiment;
 
 
 
@@ -438,9 +450,9 @@ int main() {
                         (vOrigin.x * vTileSize.x) + (x - y) * (vTileSize.x / 2),
                         (vOrigin.y * vTileSize.y) + (x + y) * (vTileSize.y / 2)
                 };
-                if(mapF[y*vWorldSize.x+x]!=-1)
+                if(mapF[y*vWorldSize.x+x]!=0)
                 {
-                    draw_sprite(buffer, tabImages[mapF[y*vWorldSize.x+x]], vWorld.x, vWorld.y);
+                    draw_sprite(buffer, tabImages[mapF[y*vWorldSize.x+x]+1], vWorld.x, vWorld.y);
                 }
 
             }
@@ -449,7 +461,27 @@ int main() {
         vSelectedWorld.x= (vOrigin.x * vTileSize.x) + (vSelected.x - vSelected.y) * (vTileSize.x / 2);
         vSelectedWorld.y=  (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2);
 
+        vBatiment.x= (vOrigin.x * vTileSize.x) + (0 - 0) * (vTileSize.x / 2);
+        vBatiment.y=  (vOrigin.y * vTileSize.y) + (0 + 0) * (vTileSize.y / 2);
+
         draw_sprite(buffer,selectionImage,vSelectedWorld.x,vSelectedWorld.y);
+
+        draw_sprite(buffer,house[0],vBatiment.x+18,vBatiment.y-10);
+
+        vBatiment.x= (vOrigin.x * vTileSize.x) + (5 - 7) * (vTileSize.x / 2);
+        vBatiment.y=  (vOrigin.y * vTileSize.y) + (5 + 7) * (vTileSize.y / 2);
+
+        draw_sprite(buffer,house[0],vBatiment.x+18,vBatiment.y-10);
+
+        vBatiment.x= (vOrigin.x * vTileSize.x) + (9 - 9) * (vTileSize.x / 2);
+        vBatiment.y=  (vOrigin.y * vTileSize.y) + (9 + 9) * (vTileSize.y / 2);
+
+        draw_sprite(buffer,tower[1],vBatiment.x,vBatiment.y-75);
+
+        vBatiment.x= (vOrigin.x * vTileSize.x) + (6 - 5) * (vTileSize.x / 2);
+        vBatiment.y=  (vOrigin.y * vTileSize.y) + (6 + 5) * (vTileSize.y / 2);
+
+        draw_sprite(buffer,tower[1],vBatiment.x,vBatiment.y-75);
 
         /*rect(buffer,(int)vCell.x*vTileSize.x,(int)vCell.y*vTileSize.y,((int)vCell.x+1)*vTileSize.x,((int)vCell.y+1)*vTileSize.y, makecol(255,0,0));*/
        /* rect(buffer,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2,(mapX+1)*TILE_WIDTH,(mapY+1)*TILE_HEIGHT/2, makecol(255,0,0));*/
@@ -465,9 +497,9 @@ int main() {
                if(vSelected.x>=0&&vSelected.y>=0&&vSelected.x<=vWorldSize.x&&vSelected.y<=vWorldSize.y)
                {
                    mapF[vSelected.y*vWorldSize.x+vSelected.x]+=1;
-                   if(mapF[vSelected.y*vWorldSize.x+vSelected.x]>113)
+                   if(mapF[vSelected.y*vWorldSize.x+vSelected.x]>14)
                    {
-                       mapF[vSelected.y*vWorldSize.x+vSelected.x]=-1;
+                       mapF[vSelected.y*vWorldSize.x+vSelected.x]=0;
                    }
                }
            }

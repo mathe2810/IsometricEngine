@@ -243,7 +243,7 @@ int main() {
            button(&vOrigin);
            myResetClock(&clockMooveMap);
        }
-       if(tempsPourClick>20)
+       if(tempsPourClick>50)
        {
            if(mouse_b==1)
            {

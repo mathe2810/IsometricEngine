@@ -2,6 +2,7 @@
 #include "allegro.h"
 #include "time.h"
 #include "stdlib.h"
+#include "stdbool.h"
 
 
 typedef struct
@@ -52,6 +53,16 @@ BITMAP * importeImage(char *nomDeFichier)
         exit(EXIT_FAILURE);
     }
     return imageARendre;
+}
+
+void handleMalloc( void *var)
+{
+    if(var==NULL)
+    {
+        allegro_message("probleme d'allocation de mémoire");
+        allegro_exit();
+        exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -127,9 +138,79 @@ void drawBatiments(BITMAP *buffer,BITMAP **tabImage,int numTab,int Xposition,int
     draw_sprite(buffer,tabImage[numTab],vBatiment.x+OffSetX,vBatiment.y+OffSetY);
 }
 
+int * loadMap(FILE *pf,Vector2D vWorldSize)
+{
+    int *map= malloc(sizeof (int)*vWorldSize.x*vWorldSize.y);
+    handleMalloc(map);
+    for (int i = 0; i < vWorldSize.y; i++) {
+        for (int j = 0; j < vWorldSize.x; j++) {
+            fscanf(pf,"%d",&map[i*vWorldSize.x+j]);
+        }
+    }
+    return map;
+}
+
+int *createMap(Vector2D vWorldSize)
+{
+    int *map= malloc(sizeof (int)*vWorldSize.x*vWorldSize.y);
+    handleMalloc(map);
+    for (int i = 0; i < vWorldSize.y; i++) {
+        for (int j = 0; j < vWorldSize.x; j++) {
+            map[i*vWorldSize.x+j]=rand()%15;
+        }
+    }
+    return map;
+}
+
+void saveMap(int *map,Vector2D vWorldSize)
+{
+    FILE *pf= fopen("../map.txt","w+");
+    for (int i = 0; i < vWorldSize.y; i++) {
+        for (int j = 0; j < vWorldSize.x; j++) {
+
+            fprintf(pf,"%d ",map[i*vWorldSize.x+j]);
+            printf("%d ",map[i*vWorldSize.x+j]);
+        }
+        fprintf(pf,"%s","\n");
+        printf("\n");
+    }
+    fclose(pf);
+}
+
+int Menu(BITMAP *buffer, BITMAP **fond)
+{
+    int clockFrame=0;
+    clock_t tempsPourFrame;
+    int frame=0;
+    while(1)
+    {
+        if(mouse_b==1)
+        {
+            break;
+        }
+        clear_bitmap(buffer);
+        tempsPourFrame= myClock(clockFrame);
+        if(tempsPourFrame>100)
+        {
+            frame++;
+            if(frame>8)
+            {
+                frame=0;
+            }
+            myResetClock(&clockFrame);
+        }
+        blit(fond[frame],buffer,0,0,0,0,SCREEN_W,SCREEN_H);
+        blit(buffer,screen,0,0,0,0,SCREEN_W,SCREEN_H);
+    }
+    return 1;
+}
+
 
 int main() {
     init();
+
+    FILE *pf= fopen("../map.txt","r");
+    handleMalloc(pf);
     srand(time(NULL));
     BITMAP *tabImages[114];
     BITMAP *buffer= create_bitmap(SCREEN_W,SCREEN_H);
@@ -145,7 +226,11 @@ int main() {
     // Number of tiles in world
     Vector2D vWorldSize = { 10, 10 };
 
-    int *mapF= malloc(sizeof (int)*vWorldSize.x*vWorldSize.y);
+    int ForQuestion;
+    int *mapF;
+
+
+    mapF= createMap(vWorldSize);
 
     // Size of single tile graphic
     Vector2D vTileSize = { 94, 54 };
@@ -161,14 +246,6 @@ int main() {
         tabImages[i]= importeImage(NomDeFichier);
     }
 
-
-    for (int i = 0; i < vWorldSize.y; i++) {
-        for (int j = 0; j < vWorldSize.x; j++) {
-
-            mapF[i*vWorldSize.x+j]=rand()%15;
-        }
-    }
-
     BITMAP *imageSelection=importeImage("../images/CheatingImage.bmp");
     BITMAP *tower[2];
     for(int i=0;i<2;i++)
@@ -182,92 +259,81 @@ int main() {
         sprintf(NomDeFichier,"../house/white_green_house%d.bmp",i);
         house[i]= importeImage(NomDeFichier);
     }
+
+    BITMAP *fondMenu[9];
+    for(int i=0;i<9;i++)
+    {
+        sprintf(NomDeFichier,"../fond/%d.bmp",i);
+        fondMenu[i]= importeImage(NomDeFichier);
+    }
+    int Sequence=0;
     show_mouse(screen);
 
 
-
+    Menu(buffer, fondMenu);
     while (!key[KEY_ESC])
     {
-        tempsPourClick= myClock(clockClick);
-        tempsPourMooveMap= myClock(clockMooveMap);
+        if (key[KEY_S]) {saveMap(mapF, vWorldSize);}
+        tempsPourClick = myClock(clockClick);
+        tempsPourMooveMap = myClock(clockMooveMap);
         clear_bitmap(buffer);
         clear_bitmap(selection);
 
-        rectfill(buffer,0,0,SCREEN_W,SCREEN_H, makecol(20,180,255));
+        rectfill(buffer, 0, 0, SCREEN_W, SCREEN_H, makecol(20, 180, 255));
 
         // Work out active cell
-        Vector2DF vCell = { (float)mouse_x / (float)vTileSize.x, (float)mouse_y / (float)vTileSize.y };
-
-
+        Vector2DF vCell = {(float) mouse_x / (float) vTileSize.x, (float) mouse_y / (float) vTileSize.y};
         // Work out mouse offset into cell
-        Vector2D vOffset = { mouse_x % vTileSize.x, mouse_y % vTileSize.y };
-
+        Vector2D vOffset = {mouse_x % vTileSize.x, mouse_y % vTileSize.y};
         Vector2D vBatiment;
-
-
-
         Vector2D vSelected =
-                {
-                        ((int)vCell.y - vOrigin.y) + ((int)vCell.x - vOrigin.x),
-                        ((int)vCell.y - vOrigin.y) - ((int)vCell.x - vOrigin.x)
-                };
-
-        Vector2D vSelectedWorld= {
-                (vOrigin.x * vTileSize.x) + (vSelected.x - vSelected.y) * (vTileSize.x / 2),
-                (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2)
+        {
+      ((int) vCell.y - vOrigin.y) + ((int) vCell.x - vOrigin.x),
+      ((int) vCell.y - vOrigin.y) - ((int) vCell.x - vOrigin.x)
         };
-        draw_sprite(selection,imageSelection,vSelectedWorld.x,vSelectedWorld.y);
-        if (getpixel(selection,mouse_x,mouse_y)== makecol(255,0,0)){ vSelected.x += -1;}
-        if (getpixel(selection,mouse_x,mouse_y)== makecol(0,0,255)){ vSelected.y +=-1;}
-        if (getpixel(selection,mouse_x,mouse_y)== makecol(255,255,0)){ vSelected.y += 1;}
-        if (getpixel(selection,mouse_x,mouse_y)== makecol(0,255,0)){ vSelected.x += 1;}
+        Vector2D vSelectedWorld = {
+      (vOrigin.x * vTileSize.x) + (vSelected.x - vSelected.y) * (vTileSize.x / 2),
+      (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2)
+        };
+        draw_sprite(selection, imageSelection, vSelectedWorld.x, vSelectedWorld.y);
+        if (getpixel(selection, mouse_x, mouse_y) == makecol(255, 0, 0)) { vSelected.x += -1; }
+        if (getpixel(selection, mouse_x, mouse_y) == makecol(0, 0, 255)) { vSelected.y += -1; }
+        if (getpixel(selection, mouse_x, mouse_y) == makecol(255, 255, 0)) { vSelected.y += 1; }
+        if (getpixel(selection, mouse_x, mouse_y) == makecol(0, 255, 0)) { vSelected.x += 1; }
+        drawFloar(vWorldSize, buffer, tabImages, vOrigin, vTileSize, mapF);
 
-        drawFloar(vWorldSize,buffer,tabImages,vOrigin,vTileSize,mapF);
+        vSelectedWorld.x = (vOrigin.x * vTileSize.x) + (vSelected.x - vSelected.y) * (vTileSize.x / 2);
+        vSelectedWorld.y = (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2);
+        draw_sprite(buffer, selectionImage, vSelectedWorld.x, vSelectedWorld.y);
 
-        vSelectedWorld.x= (vOrigin.x * vTileSize.x) + (vSelected.x - vSelected.y) * (vTileSize.x / 2);
-        vSelectedWorld.y=  (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2);
+            /*drawWall(buffer,tabImages);*/
 
-
-        draw_sprite(buffer,selectionImage,vSelectedWorld.x,vSelectedWorld.y);
-
-        /*drawWall(buffer,tabImages);*/
-
-        drawBatiments(buffer,house,0,0,0,"house",vOrigin,vTileSize);
-        drawBatiments(buffer,tower,0,5,5,"tower",vOrigin,vTileSize);
-        drawBatiments(buffer,house,0,9,9,"house",vOrigin,vTileSize);
+        drawBatiments(buffer, house, 0, 0, 0, "house", vOrigin, vTileSize);
+        drawBatiments(buffer, tower, 0, 5, 5, "tower", vOrigin, vTileSize);
+        drawBatiments(buffer, house, 0, 9, 9, "house", vOrigin, vTileSize);
 
         /*rect(buffer,(int)vCell.x*vTileSize.x,(int)vCell.y*vTileSize.y,((int)vCell.x+1)*vTileSize.x,((int)vCell.y+1)*vTileSize.y, makecol(255,0,0));*/
-       /* rect(buffer,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2,(mapX+1)*TILE_WIDTH,(mapY+1)*TILE_HEIGHT/2, makecol(255,0,0));*/
-       if(tempsPourMooveMap>60)
-       {
-           button(&vOrigin);
-           myResetClock(&clockMooveMap);
-       }
-       if(tempsPourClick>50)
-       {
-           if(mouse_b==1)
-           {
-               if(vSelected.x>=0&&vSelected.y>=0&&vSelected.x<=vWorldSize.x&&vSelected.y<=vWorldSize.y)
-               {
-                   mapF[vSelected.y*vWorldSize.x+vSelected.x]+=1;
-                   if(mapF[vSelected.y*vWorldSize.x+vSelected.x]>14)
-                   {
-                       mapF[vSelected.y*vWorldSize.x+vSelected.x]=0;
-                   }
-               }
-           }
-           myResetClock(&clockClick);
-       }
-
-
-        blit(buffer,screen,0,0,0,0,SCREEN_W,SCREEN_H);
-
-
+        /* rect(buffer,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2,(mapX+1)*TILE_WIDTH,(mapY+1)*TILE_HEIGHT/2, makecol(255,0,0));*/
+        if (tempsPourMooveMap > 60) {
+        button(&vOrigin);
+        myResetClock(&clockMooveMap);
+        }
+        if (tempsPourClick > 50) {
+            if (mouse_b == 1) {
+                    if (vSelected.x >= 0 && vSelected.y >= 0 && vSelected.x <= vWorldSize.x &&
+                        vSelected.y <= vWorldSize.y) {
+                        mapF[vSelected.y * vWorldSize.x + vSelected.x] += 1;
+                        if (mapF[vSelected.y * vWorldSize.x + vSelected.x] > 14) {
+                            mapF[vSelected.y * vWorldSize.x + vSelected.x] = 0;
+                        }
+                    }
+            }
+            myResetClock(&clockClick);
+        }
+        blit(buffer, screen, 0, 0, 0, 0, SCREEN_W, SCREEN_H);
     }
-
+    fclose(pf);
     allegro_exit();
-
-
     return 0;
 }
 END_OF_MAIN();

@@ -15,12 +15,40 @@ typedef struct
     float x,y;
 }Vector2DF;
 
+typedef struct
+{
+    int num;
+    bool boolBatiments;
+    int numCheminPossible;
+}dataCase;
+
+
+typedef struct
+{
+    dataCase *Map;
+}dataMap;
+
+void checkVoisinPossible(dataMap *map,Vector2D vWorldSize)
+{
+    for (int i = 0; i < vWorldSize.y; i++) {
+        for (int j = 0; j < vWorldSize.x; j++) {
+
+            if(map->Map[i*vWorldSize.x+j].num==-1){map->Map[i*vWorldSize.x+j].numCheminPossible=0;}
+            if(map->Map[i*vWorldSize.x+j].num==0){map->Map[i*vWorldSize.x+j].numCheminPossible=4;}
+            if(map->Map[i*vWorldSize.x+j].num==1||map->Map[i*vWorldSize.x+j].num==2){map->Map[i*vWorldSize.x+j].numCheminPossible=2;}
+            if(map->Map[i*vWorldSize.x+j].num==3||map->Map[i*vWorldSize.x+j].num==4||map->Map[i*vWorldSize.x+j].num==5||map->Map[i*vWorldSize.x+j].num==6){map->Map[i*vWorldSize.x+j].numCheminPossible=3;}
+            if(map->Map[i*vWorldSize.x+j].num==7||map->Map[i*vWorldSize.x+j].num==8||map->Map[i*vWorldSize.x+j].num==9||map->Map[i*vWorldSize.x+j].num==10){map->Map[i*vWorldSize.x+j].numCheminPossible=2;}
+            if(map->Map[i*vWorldSize.x+j].num==11||map->Map[i*vWorldSize.x+j].num==12||map->Map[i*vWorldSize.x+j].num==13||map->Map[i*vWorldSize.x+j].num==14){map->Map[i*vWorldSize.x+j].numCheminPossible=1;}
+
+        }
+    }
+}
 
 void init()
 {
     allegro_init();
     set_color_depth(desktop_color_depth());
-    if(set_gfx_mode(GFX_AUTODETECT_WINDOWED,800,600,0,0)!=0)
+    if(set_gfx_mode(GFX_AUTODETECT_WINDOWED,800,800,0,0)!=0)
     {
         allegro_message("prblm gfx");
         allegro_exit();
@@ -97,7 +125,7 @@ void myResetClock( int * diffAfterReset)
 }
 
 
-void drawFloar(Vector2D vWorldSize, BITMAP*buffer,BITMAP *tabImages[],Vector2D vOrigin,Vector2D vTileSize,int *mapF)
+void drawFloar(Vector2D vWorldSize, BITMAP*buffer,BITMAP *tabImages[],Vector2D vOrigin,Vector2D vTileSize,dataMap *map)
 {
     for (int y = 0; y < vWorldSize.y; y++)
     {
@@ -108,9 +136,9 @@ void drawFloar(Vector2D vWorldSize, BITMAP*buffer,BITMAP *tabImages[],Vector2D v
                     (vOrigin.x * vTileSize.x) + (x - y) * (vTileSize.x / 2),
                     (vOrigin.y * vTileSize.y) + (x + y) * (vTileSize.y / 2)
             };
-            if(mapF[y*vWorldSize.x+x]!=0)
+            if(map->Map[y*vWorldSize.x+x].num>=0)
             {
-                draw_sprite(buffer, tabImages[mapF[y*vWorldSize.x+x]+1], vWorld.x, vWorld.y);
+                draw_sprite(buffer, tabImages[map->Map[y*vWorldSize.x+x].num], vWorld.x, vWorld.y);
             }
 
         }
@@ -138,38 +166,50 @@ void drawBatiments(BITMAP *buffer,BITMAP **tabImage,int numTab,int Xposition,int
     draw_sprite(buffer,tabImage[numTab],vBatiment.x+OffSetX,vBatiment.y+OffSetY);
 }
 
-int * loadMap(FILE *pf,Vector2D vWorldSize)
+dataMap * loadMap(FILE *pf,Vector2D vWorldSize)
 {
-    int *map= malloc(sizeof (int)*vWorldSize.x*vWorldSize.y);
+    dataMap *map= malloc(sizeof (dataMap));
     handleMalloc(map);
+    map->Map= malloc(sizeof (dataCase)*vWorldSize.x*vWorldSize.y);
+    handleMalloc(map->Map);
+
+
     for (int i = 0; i < vWorldSize.y; i++) {
         for (int j = 0; j < vWorldSize.x; j++) {
-            fscanf(pf,"%d",&map[i*vWorldSize.x+j]);
+            fscanf(pf,"%d",&map->Map[i*vWorldSize.x+j].num);
+            map->Map[i*vWorldSize.x+j].boolBatiments=false;
+        }
+    }
+
+    checkVoisinPossible(map,vWorldSize);
+
+    printf("%d :%d\n",map->Map[0*vWorldSize.x+2].num,map->Map[0*vWorldSize.x+2].numCheminPossible);
+    return map;
+}
+
+
+dataMap *createMap(Vector2D vWorldSize)
+{
+    dataMap *map= malloc(sizeof (dataMap));
+    map->Map= malloc(sizeof (dataCase)*vWorldSize.x*vWorldSize.y);
+    handleMalloc(map);
+    handleMalloc(map->Map);
+    for (int i = 0; i < vWorldSize.y; i++) {
+        for (int j = 0; j < vWorldSize.x; j++) {
+            map->Map[i*vWorldSize.x+j].num=rand()%15;
         }
     }
     return map;
 }
 
-int *createMap(Vector2D vWorldSize)
-{
-    int *map= malloc(sizeof (int)*vWorldSize.x*vWorldSize.y);
-    handleMalloc(map);
-    for (int i = 0; i < vWorldSize.y; i++) {
-        for (int j = 0; j < vWorldSize.x; j++) {
-            map[i*vWorldSize.x+j]=rand()%15;
-        }
-    }
-    return map;
-}
-
-void saveMap(int *map,Vector2D vWorldSize)
+void saveMap(dataMap *map,Vector2D vWorldSize)
 {
     FILE *pf= fopen("../map.txt","w+");
     for (int i = 0; i < vWorldSize.y; i++) {
         for (int j = 0; j < vWorldSize.x; j++) {
 
-            fprintf(pf,"%d ",map[i*vWorldSize.x+j]);
-            printf("%d ",map[i*vWorldSize.x+j]);
+            fprintf(pf,"%d ",map->Map[i*vWorldSize.x+j].num);
+            printf("%d ",map->Map[i*vWorldSize.x+j].num);
         }
         fprintf(pf,"%s","\n");
         printf("\n");
@@ -227,10 +267,10 @@ int main() {
     Vector2D vWorldSize = { 10, 10 };
 
     int ForQuestion;
-    int *mapF;
+    dataMap *map;
 
 
-    mapF= createMap(vWorldSize);
+    map= loadMap(pf,vWorldSize);
 
     // Size of single tile graphic
     Vector2D vTileSize = { 94, 54 };
@@ -240,7 +280,7 @@ int main() {
 
     char NomDeFichier[500];
 
-    for(int i=1;i<16;i++)
+    for(int i=0;i<15;i++)
     {
         sprintf(NomDeFichier,"../roads/road%d.bmp",i);
         tabImages[i]= importeImage(NomDeFichier);
@@ -273,7 +313,7 @@ int main() {
     Menu(buffer, fondMenu);
     while (!key[KEY_ESC])
     {
-        if (key[KEY_S]) {saveMap(mapF, vWorldSize);}
+        if (key[KEY_S]) {saveMap(map, vWorldSize);}
         tempsPourClick = myClock(clockClick);
         tempsPourMooveMap = myClock(clockMooveMap);
         clear_bitmap(buffer);
@@ -300,7 +340,7 @@ int main() {
         if (getpixel(selection, mouse_x, mouse_y) == makecol(0, 0, 255)) { vSelected.y += -1; }
         if (getpixel(selection, mouse_x, mouse_y) == makecol(255, 255, 0)) { vSelected.y += 1; }
         if (getpixel(selection, mouse_x, mouse_y) == makecol(0, 255, 0)) { vSelected.x += 1; }
-        drawFloar(vWorldSize, buffer, tabImages, vOrigin, vTileSize, mapF);
+        drawFloar(vWorldSize, buffer, tabImages, vOrigin, vTileSize, map);
 
         vSelectedWorld.x = (vOrigin.x * vTileSize.x) + (vSelected.x - vSelected.y) * (vTileSize.x / 2);
         vSelectedWorld.y = (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2);
@@ -322,9 +362,9 @@ int main() {
             if (mouse_b == 1) {
                     if (vSelected.x >= 0 && vSelected.y >= 0 && vSelected.x <= vWorldSize.x &&
                         vSelected.y <= vWorldSize.y) {
-                        mapF[vSelected.y * vWorldSize.x + vSelected.x] += 1;
-                        if (mapF[vSelected.y * vWorldSize.x + vSelected.x] > 14) {
-                            mapF[vSelected.y * vWorldSize.x + vSelected.x] = 0;
+                        map->Map[vSelected.y * vWorldSize.x + vSelected.x].num += 1;
+                        if (map->Map[vSelected.y * vWorldSize.x + vSelected.x].num > 14) {
+                            map->Map[vSelected.y * vWorldSize.x + vSelected.x].num = -1;
                         }
                     }
             }

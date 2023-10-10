@@ -4,6 +4,8 @@
 #include "stdlib.h"
 #include "stdbool.h"
 #include "string.h"
+#include "../includes/Graphes.h"
+
 
 
 typedef struct
@@ -135,7 +137,7 @@ void myResetClock( int * diffAfterReset)
 }
 
 
-void drawFloar(Vector2D vWorldSize, BITMAP*buffer,BITMAP *tabImages[],Vector2D vOrigin,Vector2D vTileSize,dataMap *map)
+void drawFloar(Vector2D vWorldSize, BITMAP*buffer,BITMAP *tabImages[],BITMAP *tabImagesDep[],BITMAP *tabImagesFin[],BITMAP *tabImagesChmein[],Vector2D vOrigin,Vector2D vTileSize,dataMap *map, int sDep, int sFin, const int*chemin,int nbChemin)
 {
     for (int y = 0; y < vWorldSize.y; y++)
     {
@@ -146,11 +148,44 @@ void drawFloar(Vector2D vWorldSize, BITMAP*buffer,BITMAP *tabImages[],Vector2D v
                     (vOrigin.x * vTileSize.x) + (x - y) * (vTileSize.x / 2),
                     (vOrigin.y * vTileSize.y) + (x + y) * (vTileSize.y / 2)
             };
-            if(map->Map[y*vWorldSize.x+x].num>=0)
-            {
-                draw_sprite(buffer, tabImages[map->Map[y*vWorldSize.x+x].num], vWorld.x, vWorld.y);
-            }
 
+            if(y*vWorldSize.x+x==sDep&&sDep!=-1)
+            {
+                if(map->Map[y*vWorldSize.x+x].num>=0)
+                {
+                    draw_sprite(buffer, tabImagesDep[map->Map[y*vWorldSize.x+x].num], vWorld.x, vWorld.y);
+                    continue;
+                }
+            }
+            else if(y*vWorldSize.x+x==sFin&&sFin!=-1)
+            {
+                if(map->Map[y*vWorldSize.x+x].num>=0)
+                {
+                    draw_sprite(buffer, tabImagesFin[map->Map[y*vWorldSize.x+x].num], vWorld.x, vWorld.y);
+                    continue;
+                }
+            }
+            else
+            {
+                if(map->Map[y*vWorldSize.x+x].num>=0)
+                {
+                    draw_sprite(buffer, tabImages[map->Map[y*vWorldSize.x+x].num], vWorld.x, vWorld.y);
+                }
+            }
+            if(nbChemin!=-1)
+            {
+                for(int a=0;a<nbChemin;a++)
+                {
+                    if(y*vWorldSize.x+x==chemin[a])
+                    {
+                        if(map->Map[y*vWorldSize.x+x].num>=0)
+                        {
+                            draw_sprite(buffer, tabImagesChmein[map->Map[y*vWorldSize.x+x].num], vWorld.x, vWorld.y);
+                            continue;
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -485,6 +520,7 @@ void actualiserFichierDjikstra(dataMap *map,Vector2D vWorldSize,int taille,int o
     {
         fprintf(pf,"%s",tabpred[i]);
     }
+    fclose(pf);
 
 
 }
@@ -532,6 +568,16 @@ int Menu(BITMAP *buffer, BITMAP **fond)
     return 1;
 }
 
+void initSommet(graphe_t *graphe)
+{
+    for (int i = 0; i < graphe->ordre; i++) {
+        graphe->sommets[i]->dist = MAX_INT;
+        graphe->sommets[i]->compoConnex = 0;
+        graphe->sommets[i]->couleur = 0;
+        graphe->sommets[i]->pred = -1;
+    }
+}
+
 
 int main() {
     init();
@@ -551,11 +597,10 @@ int main() {
     clock_t tempsPourClick;
 
     // Number of tiles in world
-    Vector2D vWorldSize = { 10, 10 };
+    Vector2D vWorldSize = { 20, 20 };
 
     int ForQuestion;
     dataMap *map;
-
 
     map= loadMap(pf,vWorldSize);
 
@@ -567,6 +612,25 @@ int main() {
 
     char NomDeFichier[500];
 
+    BITMAP *tabImagesSelectionsDep[15];
+    BITMAP *tabImagesSelectionsFin[15];
+    BITMAP *tabImagesSelectionsChemin[15];
+    for(int i=0;i<15;i++)
+    {
+        sprintf(NomDeFichier,"../roadsSelectionDep/road%d.bmp",i);
+        tabImagesSelectionsDep[i]= importeImage(NomDeFichier);
+    }
+
+    for(int i=0;i<15;i++)
+    {
+        sprintf(NomDeFichier,"../roadsSelectionFin/road%d.bmp",i);
+        tabImagesSelectionsFin[i]= importeImage(NomDeFichier);
+    }
+    for(int i=0;i<15;i++)
+    {
+        sprintf(NomDeFichier,"../roadsParcouru/road%d.bmp",i);
+        tabImagesSelectionsChemin[i]= importeImage(NomDeFichier);
+    }
     for(int i=0;i<15;i++)
     {
         sprintf(NomDeFichier,"../roads/road%d.bmp",i);
@@ -607,8 +671,25 @@ int main() {
     printf("ordres:%d tailles max possible:%d\n",ordre,nombreDarc);
 
     actualpred(map,vWorldSize);
-
     actualiserFichierDjikstra(map,vWorldSize,nombreDarc,ordre);
+
+
+
+
+
+    graphe_t *graphe;
+    int sDep=-1, sFin=-1;
+    int *pred;
+    int *cheminParcouru=NULL;
+    int nbCheminTrouve=-1;
+
+    bool djikstraInAction=false;
+    bool selectDep=false;
+    bool selectFin=false;
+
+
+    rewind(pf);
+
 
 
 
@@ -617,6 +698,7 @@ int main() {
     while (!key[KEY_ESC])
     {
         if (key[KEY_S]) {saveMap(map, vWorldSize);}
+
         tempsPourClick = myClock(clockClick);
         tempsPourMooveMap = myClock(clockMooveMap);
         clear_bitmap(buffer);
@@ -643,7 +725,48 @@ int main() {
         if (getpixel(selection, mouse_x, mouse_y) == makecol(0, 0, 255)) { vSelected.y += -1; }
         if (getpixel(selection, mouse_x, mouse_y) == makecol(255, 255, 0)) { vSelected.y += 1; }
         if (getpixel(selection, mouse_x, mouse_y) == makecol(0, 255, 0)) { vSelected.x += 1; }
-        drawFloar(vWorldSize, buffer, tabImages, vOrigin, vTileSize, map);
+
+        if(key[KEY_D])
+        {
+            djikstraInAction=true;
+            selectDep=true;
+            selectFin=true;
+        }
+        if(selectDep&&mouse_b==1)
+        {
+            sDep=vSelected.y*vWorldSize.x+vSelected.x;
+            if((sDep >= 0 || sDep <= ordre))
+            {
+                selectDep=false;
+            }
+        }
+        if(selectFin&&mouse_b==2)
+        {
+            sFin=vSelected.y*vWorldSize.x+vSelected.x;
+            if((sFin > 0 || sFin <= ordre))
+            {
+                selectFin=false;
+            }
+        }
+        if(djikstraInAction&&!selectDep&&!selectFin)
+        {
+            graphe = loadGraphe();
+            initSommet(graphe);
+            pred = malloc(sizeof(int) * graphe->ordre); // Initialisation du tableau des predecesseurs pour DSF
+            handleMalloc(pred);
+            for(int i = 0; i < graphe->ordre ; i++)
+                pred[i] = -1;
+            myDSF(graphe, sDep, pred, 1); // Marquage de la composante connexe dans lequel est le sommet initial
+            myDijkstra(graphe, sDep, 1); // Dijkstra
+            cheminParcouru=getWay(graphe, sDep, sFin,&nbCheminTrouve); // Affichage du chemin
+            for(int a=0;a<nbCheminTrouve;a++)
+            {
+                printf("%d\n",cheminParcouru[a]);
+            }
+            free(pred);
+            djikstraInAction=false;
+        }
+        drawFloar(vWorldSize, buffer, tabImages,tabImagesSelectionsDep,tabImagesSelectionsFin,tabImagesSelectionsChemin, vOrigin, vTileSize, map,sDep,sFin,cheminParcouru,nbCheminTrouve);
 
         vSelectedWorld.x = (vOrigin.x * vTileSize.x) + (vSelected.x - vSelected.y) * (vTileSize.x / 2);
         vSelectedWorld.y = (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2);
@@ -662,7 +785,7 @@ int main() {
         myResetClock(&clockMooveMap);
         }
         if (tempsPourClick > 50) {
-            if (mouse_b == 1) {
+            if (selectDep== false && selectFin==false&&mouse_b == 1) {
                     if (vSelected.x >= 0 && vSelected.y >= 0 && vSelected.x <= vWorldSize.x &&
                         vSelected.y <= vWorldSize.y) {
                         map->Map[vSelected.y * vWorldSize.x + vSelected.x].num += 1;

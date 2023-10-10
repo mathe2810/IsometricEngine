@@ -8,18 +8,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "struct.h"
+#include "allegro.h"
 
 // dijkstra
 void myDijkstra(graphe_t *graphe, int sDep, int numCompo);
 int *myDSF(graphe_t *g, int sdep, int *pred, int numCompo);
 
 // Graphe
-graphe_t *loadGraphe(void);
+graphe_t *loadGraphe();
 void freeGraphe(graphe_t *graphe);
 
 // Display
 void displayGrapheInfo(graphe_t *graphe);
-void getWay(graphe_t *graphe, int sDep, int sFin);
+int *getWay(graphe_t *graphe, int sDep, int sFin,int *nbCheminTrouve);
 
 void handleMalloc(void *var);
 

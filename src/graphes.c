@@ -44,24 +44,10 @@ void initGraphe(graphe_t *graphe, FILE *fp)
     }
 }
 
-FILE *getFile(void)
+graphe_t *loadGraphe()
 {
-    FILE *fp;
-    char filepath[50];
-
-    do {
-        printf("Choisir le chemin du fichier graphe:\n");
-        scanf("%s", filepath);
-        fp = fopen(filepath, "r");
-    } while (fp == NULL);
-
-    return fp;
-}
-
-graphe_t *loadGraphe(void)
-{
+    FILE *fp= fopen("../djikstra.txt","r");
     graphe_t *graphe = malloc(sizeof(graphe_t));
-    FILE *fp = getFile();
 
     handleMalloc(graphe);
     fscanf(fp, "%d", &graphe->ordre);

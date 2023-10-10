@@ -461,15 +461,12 @@ void actualiserFichierDjikstra(dataMap *map,Vector2D vWorldSize,int taille,int o
 {
     FILE *pf= fopen("../djikstra.txt","w+");
     handleMalloc(pf);
-    /*fprintf(pf,"%d\n",ordre);
+    fprintf(pf,"%d\n",ordre);
     for(int i=0;i<ordre;i++)
     {
         fprintf(pf,"%d\n",i);
     }
-    fprintf(pf,"%d\n",taille);*/
     char tabpred[taille][50];
-    char tmp[50];
-    bool nepasprint=false;
     int compteur=0;
     for(int i=0;i<vWorldSize.y;i++) {
         for(int j=0;j<vWorldSize.x;j++) {
@@ -477,13 +474,16 @@ void actualiserFichierDjikstra(dataMap *map,Vector2D vWorldSize,int taille,int o
             {
                 if(map->Map[i*vWorldSize.x+j].pred[a].existing)
                 {
+                    sprintf(tabpred[compteur],"%d %d %d\n",i*vWorldSize.x+j,map->Map[i*vWorldSize.x+j].pred[a].y*vWorldSize.x+map->Map[i*vWorldSize.x+j].pred[a].x,1);
                     compteur++;
-                    sprintf(tmp,"%d %d %d\n",i*vWorldSize.x+j,map->Map[i*vWorldSize.x+j].pred[a].y*vWorldSize.x+map->Map[i*vWorldSize.x+j].pred[a].x,1);
-                    fprintf(pf,"%s",tmp);
                 }
             }
-            compteur=0;
         }
+    }
+    fprintf(pf,"%d\n",compteur);
+    for(int i=0;i<compteur;i++)
+    {
+        fprintf(pf,"%s",tabpred[i]);
     }
 
 

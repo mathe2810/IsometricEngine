@@ -3,6 +3,7 @@
 #include "time.h"
 #include "stdlib.h"
 #include "stdbool.h"
+#include "string.h"
 
 
 typedef struct
@@ -17,9 +18,18 @@ typedef struct
 
 typedef struct
 {
+    int x,y;
+    int poids;
+    bool existing;
+
+}predecesseur;
+
+typedef struct
+{
     int num;
     bool boolBatiments;
     int numCheminPossible;
+    predecesseur pred[4];
 }dataCase;
 
 
@@ -178,12 +188,15 @@ dataMap * loadMap(FILE *pf,Vector2D vWorldSize)
         for (int j = 0; j < vWorldSize.x; j++) {
             fscanf(pf,"%d",&map->Map[i*vWorldSize.x+j].num);
             map->Map[i*vWorldSize.x+j].boolBatiments=false;
+            for(int a=0;a<4;a++)
+            {
+                map->Map[i*vWorldSize.x+j].pred[a].existing=false;
+            }
         }
     }
 
     checkVoisinPossible(map,vWorldSize);
 
-    printf("%d :%d\n",map->Map[0*vWorldSize.x+2].num,map->Map[0*vWorldSize.x+2].numCheminPossible);
     return map;
 }
 
@@ -200,6 +213,280 @@ dataMap *createMap(Vector2D vWorldSize)
         }
     }
     return map;
+}
+
+bool checkYInf(dataMap *map,int i,int j,Vector2D vWorldSize)
+{
+    return i-1>=0&&map->Map[(i-1)*vWorldSize.x+j].num!=-1;
+}
+
+bool checkYSup(dataMap *map,int i,int j,Vector2D vWorldSize)
+{
+    return i+1<vWorldSize.y&&map->Map[(i+1)*vWorldSize.x+j].num!=-1;
+}
+
+bool checkXInf(dataMap *map,int i,int j,Vector2D vWorldSize)
+{
+    return j-1>=0&&map->Map[i*vWorldSize.x+(j-1)].num!=-1;
+}
+
+bool checkXSup(dataMap *map,int i,int j,Vector2D vWorldSize)
+{
+    return j+1<vWorldSize.x&&map->Map[i*vWorldSize.x+(j+1)].num!=-1;
+}
+
+void actualpred(dataMap *map,Vector2D vWorldSize)
+{
+    for(int i=0;i<vWorldSize.y;i++) {
+        for(int j=0;j<vWorldSize.x;j++) {
+
+                if(map->Map[i*vWorldSize.x+j].num==0){
+                    if(checkYInf(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[0].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[0].y=i-1;
+                        map->Map[i*vWorldSize.x+j].pred[0].x=j;
+
+                    }
+                    if(checkYSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[1].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[1].y=i+1;
+                        map->Map[i*vWorldSize.x+j].pred[1].x=j;
+                    }
+                    if(checkXInf(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[2].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[2].y=i;
+                        map->Map[i*vWorldSize.x+j].pred[2].x=j-1;
+                    }
+                    if(checkXSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[3].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[3].y=i;
+                        map->Map[i*vWorldSize.x+j].pred[3].x=j+1;
+                    }
+                }
+
+                if(map->Map[i*vWorldSize.x+j].num==1) {
+                    if (checkXInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j - 1;
+
+                    }
+                    if (checkXSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[1].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[1].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[1].x = j + 1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==2) {
+                    if (checkYInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i - 1;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j;
+
+                    }
+                    if (checkYSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[1].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[1].y = i + 1;
+                        map->Map[i * vWorldSize.x + j].pred[1].x = j;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==3) {
+                    if (checkYSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i + 1;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j;
+                    }
+                    if (checkXInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[1].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[1].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[1].x = j - 1;
+                    }
+                    if (checkXSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[2].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[2].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[2].x = j + 1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==4){
+                    if (checkYInf(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[0].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[0].y=i-1;
+                        map->Map[i*vWorldSize.x+j].pred[0].x=j;
+
+                    }
+                    if (checkYSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[1].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[1].y=i+1;
+                        map->Map[i*vWorldSize.x+j].pred[1].x=j;
+                    }
+                    if (checkXSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[2].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[2].y=i;
+                        map->Map[i*vWorldSize.x+j].pred[2].x=j+1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==5) {
+                    if (checkYInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i - 1;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j;
+
+                    }
+                if (checkXInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[1].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[1].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[1].x = j - 1;
+                    }
+                   if (checkXSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[2].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[2].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[2].x = j + 1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==6) {
+                    if (checkYInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i - 1;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j;
+
+                    }
+                    if (checkYSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[1].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[1].y = i + 1;
+                        map->Map[i * vWorldSize.x + j].pred[1].x = j;
+                    }
+                if (checkXInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[2].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[2].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[2].x = j - 1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==7){
+                    if (checkXInf(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[0].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[0].y=i;
+                        map->Map[i*vWorldSize.x+j].pred[0].x=j-1;
+                    }
+                    if (checkYSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[1].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[1].y=i+1;
+                        map->Map[i*vWorldSize.x+j].pred[1].x=j;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==8){
+                    if (checkYInf(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[0].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[0].y=i-1;
+                        map->Map[i*vWorldSize.x+j].pred[0].x=j;
+
+                    }
+                    if (checkXSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[1].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[1].y=i;
+                        map->Map[i*vWorldSize.x+j].pred[1].x=j+1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==9) {
+                if (checkXInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j - 1;
+                    }
+                    if (checkYInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[1].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[1].y = i - 1;
+                        map->Map[i * vWorldSize.x + j].pred[1].x = j;
+
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==10){
+                    if (checkYSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[0].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[0].y=i+1;
+                        map->Map[i*vWorldSize.x+j].pred[0].x=j;
+                    }
+                    if (checkXSup(map,i,j,vWorldSize))
+                    {
+                        map->Map[i*vWorldSize.x+j].pred[1].existing=true;
+                        map->Map[i*vWorldSize.x+j].pred[1].y=i;
+                        map->Map[i*vWorldSize.x+j].pred[1].x=j+1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==11) {
+                   if (checkXSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j + 1;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==12) {
+                    if (checkYSup(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i + 1;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j;
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==13) {
+                    if (checkYInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i - 1;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j;
+
+                    }
+                }
+                if(map->Map[i*vWorldSize.x+j].num==14) {
+                if (checkXInf(map,i,j,vWorldSize)) {
+                        map->Map[i * vWorldSize.x + j].pred[0].existing = true;
+                        map->Map[i * vWorldSize.x + j].pred[0].y = i;
+                        map->Map[i * vWorldSize.x + j].pred[0].x = j - 1;
+                    }
+                }
+        }
+    }
+}
+
+void actualiserFichierDjikstra(dataMap *map,Vector2D vWorldSize,int taille,int ordre)
+{
+    FILE *pf= fopen("../djikstra.txt","w+");
+    handleMalloc(pf);
+    /*fprintf(pf,"%d\n",ordre);
+    for(int i=0;i<ordre;i++)
+    {
+        fprintf(pf,"%d\n",i);
+    }
+    fprintf(pf,"%d\n",taille);*/
+    char tabpred[taille][50];
+    char tmp[50];
+    bool nepasprint=false;
+    int compteur=0;
+    for(int i=0;i<vWorldSize.y;i++) {
+        for(int j=0;j<vWorldSize.x;j++) {
+            for(int a=0;a<4;a++)
+            {
+                if(map->Map[i*vWorldSize.x+j].pred[a].existing)
+                {
+                    compteur++;
+                    sprintf(tmp,"%d %d %d\n",i*vWorldSize.x+j,map->Map[i*vWorldSize.x+j].pred[a].y*vWorldSize.x+map->Map[i*vWorldSize.x+j].pred[a].x,1);
+                    fprintf(pf,"%s",tmp);
+                }
+            }
+            compteur=0;
+        }
+    }
+
+
 }
 
 void saveMap(dataMap *map,Vector2D vWorldSize)
@@ -309,6 +596,22 @@ int main() {
     int Sequence=0;
     show_mouse(screen);
 
+    int nombreDarc=0;
+    int ordre=vWorldSize.x*vWorldSize.y;
+
+    for (int i = 0; i < vWorldSize.y; i++) {
+        for (int j = 0; j < vWorldSize.x; j++) {
+            nombreDarc+=map->Map[i*vWorldSize.x+j].numCheminPossible;
+        }
+    }
+    printf("ordres:%d tailles max possible:%d\n",ordre,nombreDarc);
+
+    actualpred(map,vWorldSize);
+
+    actualiserFichierDjikstra(map,vWorldSize,nombreDarc,ordre);
+
+
+
 
     Menu(buffer, fondMenu);
     while (!key[KEY_ESC])
@@ -348,9 +651,9 @@ int main() {
 
             /*drawWall(buffer,tabImages);*/
 
-        drawBatiments(buffer, house, 0, 0, 0, "house", vOrigin, vTileSize);
+        /*drawBatiments(buffer, house, 0, 0, 0, "house", vOrigin, vTileSize);
         drawBatiments(buffer, tower, 0, 5, 5, "tower", vOrigin, vTileSize);
-        drawBatiments(buffer, house, 0, 9, 9, "house", vOrigin, vTileSize);
+        drawBatiments(buffer, house, 0, 9, 9, "house", vOrigin, vTileSize);*/
 
         /*rect(buffer,(int)vCell.x*vTileSize.x,(int)vCell.y*vTileSize.y,((int)vCell.x+1)*vTileSize.x,((int)vCell.y+1)*vTileSize.y, makecol(255,0,0));*/
         /* rect(buffer,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2,(mapX+1)*TILE_WIDTH,(mapY+1)*TILE_HEIGHT/2, makecol(255,0,0));*/

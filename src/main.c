@@ -40,6 +40,128 @@ typedef struct
     dataCase *Map;
 }dataMap;
 
+///site to convert ttf to fnt and bmp: https://ttf2fnt.com/
+
+typedef struct
+{
+    BITMAP *charbmp;
+    int xOffset,yOffset;
+    int xAdvance;
+}t_font;
+
+
+BITMAP * importeImage(char *nomDeFichier)
+{
+    BITMAP *imageARendre= load_bitmap(nomDeFichier,NULL);
+    if(!imageARendre)
+    {
+        allegro_message("ne peut pas ouvrir %s",nomDeFichier);
+        allegro_exit();
+        exit(EXIT_FAILURE);
+    }
+    return imageARendre;
+}
+
+t_font * createFont(const char * filenameFNT,char * filenameBMP, int* tailleChar) {
+    BITMAP *bitmapAllImages= importeImage(filenameBMP);
+    FILE *pfFont= fopen(filenameFNT,"r");
+    char *tmp= malloc(sizeof (char)*CHAR_MAX);
+    fscanf(pfFont,"%s",tmp);
+    fscanf(pfFont,"%s",tmp);
+    char name[100];
+    fscanf(pfFont,"%s",name);
+    //printf ("name : %s\n",name);
+    while(strcmp(tmp,"count")!=0){
+        fscanf(pfFont,"%s",tmp);
+    }
+    int nbrChar;
+    int charid=0;
+    fscanf(pfFont,"%d",&nbrChar);
+    //printf ("taille : %d\n",nbrChar);
+    t_font *fontToReturn= malloc(sizeof (t_font)*nbrChar);
+    for(int i=0;i<nbrChar;i++)
+    {
+        int id;
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&id);
+        //printf ("id :%d ",id);
+        int x;
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&x);
+        //printf ("x : %d ",x);
+        int y;
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&y);
+        //printf ("y : %d ",y);
+        int width;
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&width);
+        //printf ("width : %d ",width);
+        int height;
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&height);
+        //printf ("height : %d ",height);
+
+        ///to save:
+
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&fontToReturn[charid].xOffset);
+        //printf ("xOffset : %d ",fontToReturn[charid].xOffset);
+
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&fontToReturn[charid].yOffset);
+        //printf ("yOffset : %d ",fontToReturn[charid].yOffset);
+
+        fscanf(pfFont,"%s",tmp);
+        fscanf(pfFont,"%d",&fontToReturn[charid].xAdvance);
+        //printf ("xAdvance : %d ",fontToReturn[charid].xAdvance);
+
+        while(strcmp(tmp,"15")!=0){
+            fscanf(pfFont,"%s",tmp);
+        }
+        //printf ("\n");
+        if(height==0||width==0)
+        {
+
+        }
+        else{
+            fontToReturn[charid].charbmp= create_sub_bitmap(bitmapAllImages, x, y, width, height);
+            charid++;
+        }
+        *tailleChar=charid-1;
+
+    }
+    fclose(pfFont);
+    return fontToReturn;
+}
+
+void redimesionerFont(t_font*fontCustom,int tailletab, float nvlTaille)
+{
+    for(int i=0;i<tailletab;i++)
+    {
+        BITMAP *redimensionner= create_bitmap((int)(fontCustom[i].charbmp->w*nvlTaille),(int)(fontCustom[i].charbmp->h*nvlTaille));
+        stretch_blit(fontCustom[i].charbmp,redimensionner,0,0,fontCustom[i].charbmp->w, fontCustom[i].charbmp->h, 0, 0,redimensionner->w, redimensionner->h);
+        fontCustom[i].charbmp=redimensionner;
+        fontCustom[i].xOffset=(int)(fontCustom[i].xOffset*nvlTaille);
+        fontCustom[i].yOffset=(int)(fontCustom[i].yOffset*nvlTaille);
+        fontCustom[i].xAdvance=(int)(fontCustom[i].xAdvance*nvlTaille);
+    }
+}
+
+
+void createNameFILE(const char * nomFont, char *FILEFNT, char *FILEBMP)
+{
+
+    strcpy(FILEFNT,"../font/");
+    strcpy(FILEBMP,"../font/");
+
+    strcat(FILEFNT,nomFont);
+    strcat(FILEBMP,nomFont);
+
+    strcat(FILEFNT,".fnt");
+    strcat(FILEBMP,".bmp");
+}
+
 void checkVoisinPossible(dataMap *map,Vector2D vWorldSize)
 {
     for (int i = 0; i < vWorldSize.y; i++) {
@@ -82,18 +204,6 @@ SAMPLE * importeSon(char *nomDeFichier)
     return sonARendre;
 }
 
-
-BITMAP * importeImage(char *nomDeFichier)
-{
-    BITMAP *imageARendre= load_bitmap(nomDeFichier,NULL);
-    if(!imageARendre)
-    {
-        allegro_message("ne peut pas ouvrir %s",nomDeFichier);
-        allegro_exit();
-        exit(EXIT_FAILURE);
-    }
-    return imageARendre;
-}
 
 void handleMalloc( void *var)
 {
@@ -551,6 +661,11 @@ int Menu(BITMAP *buffer, BITMAP **fond)
         {
             break;
         }
+        if(key[KEY_ESC])
+        {
+            allegro_exit();
+            exit(EXIT_SUCCESS);
+        }
         clear_bitmap(buffer);
         tempsPourFrame= myClock(clockFrame);
         if(tempsPourFrame>100)
@@ -582,6 +697,14 @@ void initSommet(graphe_t *graphe)
 int main() {
     init();
 
+
+    int playerX=0;
+    int playerY=0;
+
+    int playerWorldX,playerWorldY;
+
+
+
     FILE *pf= fopen("../map.txt","r");
     handleMalloc(pf);
     srand(time(NULL));
@@ -589,6 +712,15 @@ int main() {
     BITMAP *buffer= create_bitmap(SCREEN_W,SCREEN_H);
     BITMAP *selection=create_bitmap(SCREEN_W,SCREEN_H);
     BITMAP *selectionImage= importeImage("../images/imageSelection.bmp");
+
+    char FILEFNT[200];
+    char FILEBMP[200];
+    int tailleTabMax;
+
+    createNameFILE("OldLondon",FILEFNT,FILEBMP);
+
+    t_font *fontCustomMedieval= createFont(FILEFNT,FILEBMP,&tailleTabMax);
+    printf("lom");
 
     int clockMooveMap=0;
     clock_t tempsPourMooveMap;
@@ -772,6 +904,11 @@ int main() {
         vSelectedWorld.y = (vOrigin.y * vTileSize.y) + (vSelected.x + vSelected.y) * (vTileSize.y / 2);
         draw_sprite(buffer, selectionImage, vSelectedWorld.x, vSelectedWorld.y);
 
+        playerWorldX=(vOrigin.x * vTileSize.x) + (playerX - playerY) * (vTileSize.x / 2);
+        playerWorldY=(vOrigin.y * vTileSize.y) + (playerX + playerY) * (vTileSize.y / 2);
+
+        circlefill(buffer,playerWorldX+vTileSize.x/2,playerWorldY+vTileSize.y/2,5, makecol(255,255,0));
+
             /*drawWall(buffer,tabImages);*/
 
         /*drawBatiments(buffer, house, 0, 0, 0, "house", vOrigin, vTileSize);
@@ -784,7 +921,7 @@ int main() {
         button(&vOrigin);
         myResetClock(&clockMooveMap);
         }
-        if (tempsPourClick > 50) {
+       /* if (tempsPourClick > 50) {
             if (selectDep== false && selectFin==false&&mouse_b == 1) {
                     if (vSelected.x >= 0 && vSelected.y >= 0 && vSelected.x <= vWorldSize.x &&
                         vSelected.y <= vWorldSize.y) {
@@ -792,10 +929,12 @@ int main() {
                         if (map->Map[vSelected.y * vWorldSize.x + vSelected.x].num > 14) {
                             map->Map[vSelected.y * vWorldSize.x + vSelected.x].num = -1;
                         }
+                        playerX=vSelected.x;
+                        playerY=vSelected.y;
                     }
             }
             myResetClock(&clockClick);
-        }
+        }*/
         blit(buffer, screen, 0, 0, 0, 0, SCREEN_W, SCREEN_H);
     }
     fclose(pf);

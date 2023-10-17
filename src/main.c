@@ -162,6 +162,49 @@ void createNameFILE(const char * nomFont, char *FILEFNT, char *FILEBMP)
     strcat(FILEBMP,".bmp");
 }
 
+void ecrirePhraseAvecFont(t_font *fontCustom,const char *phrase, int tailleMax, BITMAP *buffer,int x,int y)
+{
+
+    for(int i=0;i<strlen(phrase);i++)
+    {
+        if(phrase[i]==' ')
+        {
+            x=x+30;
+        }
+        else
+        {
+            if(phrase[i]-33<tailleMax&&phrase[i]-33>0)
+            {
+                draw_sprite(buffer,fontCustom[phrase[i]-33].charbmp,x+fontCustom[phrase[i]-33].xOffset,y+fontCustom[phrase[i]-33].yOffset);
+                x=x+fontCustom[phrase[i]-33].xAdvance;
+            }
+        }
+    }
+}
+
+t_font *changeColorFont(int tailleMaxFont,int color,const char* FILEFNT, char *FILEBMP,BITMAP *buffer)
+{
+    t_font *fontCustom= createFont(FILEFNT,FILEBMP,&tailleMaxFont);
+    for(int i=0;i<tailleMaxFont;i++)
+    {
+        BITMAP *tmp= create_bitmap(fontCustom[i].charbmp->w,fontCustom[i].charbmp->h);
+        rectfill(tmp,0,0,tmp->w,tmp->h, makecol(255,0,255));
+        for(int j=0;j<fontCustom[i].charbmp->w;j++)
+        {
+            for(int a=0;a<fontCustom[i].charbmp->h;a++)
+            {
+                if(getpixel(fontCustom[i].charbmp,j,a)== makecol(0,0,0))
+                {
+                    putpixel(tmp,j,a,color);
+                }
+            }
+        }
+        fontCustom[i].charbmp=tmp;
+
+    }
+    return fontCustom;
+}
+
 void checkVoisinPossible(dataMap *map,Vector2D vWorldSize)
 {
     for (int i = 0; i < vWorldSize.y; i++) {
@@ -650,11 +693,12 @@ void saveMap(dataMap *map,Vector2D vWorldSize)
     fclose(pf);
 }
 
-int Menu(BITMAP *buffer, BITMAP **fond)
+int Menu(BITMAP *buffer, BITMAP **fond, t_font *fontCustom, int tailleMaxFont,const char *FILEFNT, char * FILEBMP)
 {
     int clockFrame=0;
     clock_t tempsPourFrame;
     int frame=0;
+    fontCustom= changeColorFont(tailleMaxFont, makecol(125,25,25),FILEFNT,FILEBMP,buffer);
     while(1)
     {
         if(mouse_b==1)
@@ -678,6 +722,20 @@ int Menu(BITMAP *buffer, BITMAP **fond)
             myResetClock(&clockFrame);
         }
         blit(fond[frame],buffer,0,0,0,0,SCREEN_W,SCREEN_H);
+        rectfill(buffer,450,0,800,800, makecol(200,198,175));
+        if(mouse_x>450&&mouse_x<800&&mouse_y>300&&mouse_y<400)
+        {
+            rectfill(buffer,450,300,800,400, makecol(0,0,0));
+        }
+        if(mouse_x>450&&mouse_x<800&&mouse_y>400&&mouse_y<500)
+        {
+            rectfill(buffer,450,400,800,500, makecol(0,0,0));
+        }
+        ecrirePhraseAvecFont(fontCustom,"Isometric medieval",tailleMaxFont,buffer,70,0);
+        ecrirePhraseAvecFont(fontCustom,"PLAY",tailleMaxFont,buffer,500,300);
+        ecrirePhraseAvecFont(fontCustom,"LOAD",tailleMaxFont,buffer,500,400);
+
+
         blit(buffer,screen,0,0,0,0,SCREEN_W,SCREEN_H);
     }
     return 1;
@@ -720,7 +778,8 @@ int main() {
     createNameFILE("OldLondon",FILEFNT,FILEBMP);
 
     t_font *fontCustomMedieval= createFont(FILEFNT,FILEBMP,&tailleTabMax);
-    printf("lom");
+
+    redimesionerFont(fontCustomMedieval,tailleTabMax,0.5f);
 
     int clockMooveMap=0;
     clock_t tempsPourMooveMap;
@@ -826,7 +885,7 @@ int main() {
 
 
 
-    Menu(buffer, fondMenu);
+    Menu(buffer, fondMenu, fontCustomMedieval,tailleTabMax,FILEFNT,FILEBMP);
     while (!key[KEY_ESC])
     {
         if (key[KEY_S]) {saveMap(map, vWorldSize);}
@@ -907,21 +966,21 @@ int main() {
         playerWorldX=(vOrigin.x * vTileSize.x) + (playerX - playerY) * (vTileSize.x / 2);
         playerWorldY=(vOrigin.y * vTileSize.y) + (playerX + playerY) * (vTileSize.y / 2);
 
-        circlefill(buffer,playerWorldX+vTileSize.x/2,playerWorldY+vTileSize.y/2,5, makecol(255,255,0));
+        /*circlefill(buffer,playerWorldX+vTileSize.x/2,playerWorldY+vTileSize.y/2,5, makecol(255,255,0));*/
 
             /*drawWall(buffer,tabImages);*/
 
         /*drawBatiments(buffer, house, 0, 0, 0, "house", vOrigin, vTileSize);
         drawBatiments(buffer, tower, 0, 5, 5, "tower", vOrigin, vTileSize);
         drawBatiments(buffer, house, 0, 9, 9, "house", vOrigin, vTileSize);*/
-
+        
         /*rect(buffer,(int)vCell.x*vTileSize.x,(int)vCell.y*vTileSize.y,((int)vCell.x+1)*vTileSize.x,((int)vCell.y+1)*vTileSize.y, makecol(255,0,0));*/
         /* rect(buffer,mapX*TILE_WIDTH,mapY*TILE_HEIGHT/2,(mapX+1)*TILE_WIDTH,(mapY+1)*TILE_HEIGHT/2, makecol(255,0,0));*/
         if (tempsPourMooveMap > 60) {
         button(&vOrigin);
         myResetClock(&clockMooveMap);
         }
-       /* if (tempsPourClick > 50) {
+        if (tempsPourClick > 50) {
             if (selectDep== false && selectFin==false&&mouse_b == 1) {
                     if (vSelected.x >= 0 && vSelected.y >= 0 && vSelected.x <= vWorldSize.x &&
                         vSelected.y <= vWorldSize.y) {
@@ -934,7 +993,7 @@ int main() {
                     }
             }
             myResetClock(&clockClick);
-        }*/
+        }
         blit(buffer, screen, 0, 0, 0, 0, SCREEN_W, SCREEN_H);
     }
     fclose(pf);
